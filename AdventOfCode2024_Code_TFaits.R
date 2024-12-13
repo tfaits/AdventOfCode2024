@@ -487,8 +487,194 @@ for(i in 1:length(tmp)){
 }
 print(format(checkSum, digits=nchar(checkSum)))
 
+## D10, p1
+myin <- read.table("/Users/tfaits/Documents/Advent2024/d10.txt", header=FALSE, comment.char = "", colClasses = "character")
+# myin <- data.frame(V1=c("89010123",
+#           "78121874",
+#           "87430965",
+#           "96549874",
+#           "45678903",
+#           "32019012",
+#           "01329801",
+#           "10456732"))
+nDim <- nrow(myin)
+#I'm going to add a border around the map with impossible-to-reach values (11) to make checking up/down/left/right less painful
+mymat <- matrix(nrow=nDim+2, ncol=nchar(myin[1,1])+2)
+for(i in 1:nDim){
+  mymat[i+1,2:(nDim+1)] <- as.numeric(strsplit(myin[i,1],"")[[1]])
+}
+mymat[is.na(mymat)] <- 11
+checkPath <- function(curloc){
+  curAlt <- mymat[curloc]
+  trailEnd <- c()
+  if(curAlt==9){
+    return(curloc)
+  }else{
+    for(i in c(curloc-ncol(mymat), curloc-1, curloc+1, curloc+ncol(mymat))){#Check left/up/down/right
+      if(mymat[i] == curAlt+1){
+        trailEnd <- c(trailEnd, checkPath(i))
+      }
+    }
+    return(trailEnd)
+  }
+}
+myPaths <- list()
+for(location in which(mymat==0)){#Loop through each trailhead
+  myPaths[[as.character(location)]] <- unique(checkPath(location))
+}
+print(sum(sapply(myPaths,length)))
+#p2 Looks like I already solved this one. I just need to drop the "unique" call on the trail counts!
+myPaths <- list()
+for(location in which(mymat==0)){#Loop through each trailhead
+  myPaths[[as.character(location)]] <- checkPath(location)
+}
+print(sum(sapply(myPaths,length)))
 
+##D11 p1:
+## Initial thoughts: this seems very straightforward to just *do*, but like it might balloon out into insane size/time/memory.
+## So... is the trick to find the trick? I guess we'll see.
+## One thing to consider is that neighboring rocks don't interract with each other, and they keep their order, so you can really process a single rock at a time.
+myin <- c(5, 127, 680267, 39260, 0, 26, 3553, 5851995)
+processRock <- function(rock){
+  if(rock){
+    if(nchar(rock) %% 2){
+      return(rock*2024)
+    }else{
+      sp <- 10^(nchar(rock)/2)
+      return(c(floor(rock/sp), rock %% sp))
+    }
+  }else{
+    return(1)
+  }
+}
+for(idx in 1:25){
+  myout <- c()
+  for(rock in myin){
+    myout <- c(myout, processRock(rock))
+  }
+  myin <- myout
+  #print(length(myin))
+  print(idx)
+  print(max(myin))
+}
 
+#p2
+# Ok, yes, I was correct about the problem. The solution also seems straightforward: identify patterns of what types of numbers will produce numbers that split
+##P1 is possible as-is, but takes forever. Definitely can't do 75 iterations that way. So! Let's crack numbers into *types* of numbers
+##And find a function that will tell us what we get.
+## I have a hunch that some values are going to keep coming up, as things loop a lot. To explore that, let's check:
+length(myin)
+length(unique(myin))## Only 54 unique values, despite 19778 rocks! That's... much easier to work with.
+## So, I need to keep track of counts of values, rather than values. This would probably be more straightforward with a Python dictionary...
+myin <- c(5, 127, 680267, 39260, 0, 26, 3553, 5851995)#Reset the starting values
+myRocks <- list()
+for(i in myin){
+  myRocks[[as.character(i)]] <- 1#There are no repeated values in my input. This does assume that that's the case.
+}
+for(idx in 1:75){
+  nextRound <- list()
+  for(rock in names(myRocks)){
+    tmp <- processRock(as.numeric(rock))
+    for(newRock in tmp){
+      if(newRock %in% names(nextRound)){
+        nextRound[[as.character(newRock)]] <- nextRound[[as.character(newRock)]] + ifelse(rock %in% names(myRocks), myRocks[[as.character(rock)]], 1)
+      }else{
+        nextRound[[as.character(newRock)]] <- ifelse(rock %in% names(myRocks), myRocks[[as.character(rock)]], 1)
+      }
+    }
+  }
+  myRocks <- nextRound
+}
+tmp <- 0
+for(i in names(myRocks)){
+  tmp <- tmp + myRocks[[i]]
+}
+print(format(tmp, digits=nchar(tmp)))
 
-
-
+## D12 p1
+myin <- read.table("/Users/tfaits/Documents/Advent2024/d12.txt", header=FALSE, comment.char = "", colClasses = "character")
+# myin <- data.frame(V1=c("RRRRIICCFF",
+#                         "RRRRIICCCF",
+#                         "VVRRRCCFFF",
+#                         "VVRCCCJFFF",
+#                         "VVVVCJJCFE",
+#                         "VVIVCCJJEE",
+#                         "VVIIICJJEE",
+#                         "MIIIIIJJEE",
+#                         "MIIISIJEEE",
+#                         "MMMISSJEEE"))
+nDim <- nrow(myin)
+#I'm going to add a border around the map with non-crops to make checking up/down/left/right less painful
+mymat <- matrix(nrow=nDim+2, ncol=nchar(myin[1,1])+2)
+for(i in 1:nDim){
+  mymat[i+1,2:(nDim+1)] <- strsplit(myin[i,1],"")[[1]]
+}
+mymat[is.na(mymat)] <- "#"
+## I am currently imagining starting at a point, noting what crop is there, then changing that position to an active "."
+## ...then propagate outward, filling in all adjascent spots of the same crop with more "."
+## Couunting dots is easy for area. counting perimiter... means just checking each dot again?
+## Let's start by identifying the region and finding the area. Maybe ideas for perimeter will come to me as I work.
+findRegion <- function(curloc){
+  curCrop <- mymat[curloc]
+  mymat[curloc] <<- "."
+  myPer <- 0
+  for(i in c(curloc-nrow(mymat), curloc-1, curloc+1, curloc+nrow(mymat))){#Check left/up/down/right
+    if(mymat[i] == curCrop){
+      myPer <- myPer + findRegion(i)
+    }
+    if(!mymat[i] %in% c(".", curCrop)){
+      myPer <- myPer + 1
+    }
+  }
+  return(myPer)
+}
+measureArea <- function(){
+  return(sum(mymat=="."))
+}
+myPrice <- 0
+for(i in 1:length(mymat)){
+  if(!mymat[i] %in% c(".","#")){
+    curPerimeter <- findRegion(i)
+    curArea <- measureArea()
+    mymat[mymat=="."] <- "#"
+    myPrice <- myPrice + (curPerimeter * curArea)
+  }
+}
+myPrice
+#p2
+## This... is actually really easy? When I check each spot to see if it's an edge (where I add perimeter+1)...
+## I just have to check its two neighbors to see if they're matching edges, and subtract 1/2 for each that is.
+## I guess it's a little annoing to need to match direction? But not a big deal computationally.
+mymat <- matrix(nrow=nDim+2, ncol=nchar(myin[1,1])+2)#Need to remake the map, since I destroy it each time... Not great planning on my part.
+for(i in 1:nDim){
+  mymat[i+1,2:(nDim+1)] <- strsplit(myin[i,1],"")[[1]]
+}
+mymat[is.na(mymat)] <- "#"
+myDirs <- c(1, -nrow(mymat), -1, nrow(mymat), 1, -nrow(mymat))# down/left/up/right/down/left
+findRegionB <- function(curloc){
+  curCrop <- mymat[curloc]
+  mymat[curloc] <<- "."
+  #mymat[curloc] <- "."
+  myPer <- 0
+  for(i in 2:5){#Check left/up/right/down
+    if(mymat[curloc+myDirs[i]] == curCrop){
+      myPer <- myPer + findRegionB(curloc+myDirs[i])
+    }
+    if(!mymat[curloc+myDirs[i]] %in% c(".", curCrop)){
+      myPer <- myPer + 1
+      myPer <- myPer - (0.5)*(sum((!mymat[c(curloc + myDirs[i+1] + myDirs[i], curloc + myDirs[i-1] + myDirs[i])] %in% c(".",curCrop)) &
+                                    (mymat[c(curloc + myDirs[i+1], curloc + myDirs[i-1])] %in% c(".",curCrop))))
+    }
+  }
+  return(myPer)
+}
+myPrice <- 0
+for(i in 1:length(mymat)){
+  if(!mymat[i] %in% c(".","#")){
+    curPerimeter <- findRegionB(i)
+    curArea <- measureArea()
+    mymat[mymat=="."] <- "#"
+    myPrice <- myPrice + (curPerimeter * curArea)
+  }
+}
+myPrice
