@@ -678,3 +678,143 @@ for(i in 1:length(mymat)){
   }
 }
 myPrice
+
+##D13 p1:
+##So... this is just math, right? The two buttons make two slopes. If you project those slopes out of the origin and back out of the prize...
+##...they should intersect at 2 points (A->B or B->A). Those are the only two valid ways to get the prize, so then it's just a matter of minimizing the path
+myin <- strsplit(read_file("/Users/tfaits/Documents/Advent2024/d13.txt"),"\n")[[1]]
+AbuttX <- c()
+AbuttY <- c()
+BbuttX <- c()
+BbuttY <- c()
+PrizeX <- c()
+PrizeY <- c()
+idx <- 0
+## Y=m*X-m*PrizeX+PrizeY
+## Y=n*X
+## n*X = m*X - m*PrizeX + PrizeY
+## (n-m)*X = - m*PrizeX + PrizeY
+## X = (- m*PrizeX + PrizeY)/(n-m)
+## Y = n*X
+##... Or the reverse. X=(n*PrizeX+PrizeY)/(m-n), and Y=m*X.
+while(idx < length(myin)){
+  idx <- idx + 1
+  AbuttX <- c(AbuttX, as.numeric(strsplit(strsplit(myin[idx],"X+")[[1]][2],",")[[1]][1]))
+  AbuttY <- c(AbuttY, as.numeric(strsplit(myin[idx],"Y+")[[1]][2]))
+  idx <- idx + 1
+  BbuttX <- c(BbuttX, as.numeric(strsplit(strsplit(myin[idx],"X+")[[1]][2],",")[[1]][1]))
+  BbuttY <- c(BbuttY, as.numeric(strsplit(myin[idx],"Y+")[[1]][2]))
+  idx <- idx + 1
+  PrizeX <- c(PrizeX, as.numeric(strsplit(strsplit(myin[idx],"X=")[[1]][2],",")[[1]][1]))
+  PrizeY <- c(PrizeY, as.numeric(strsplit(myin[idx],"Y=")[[1]][2]))
+  idx <- idx + 1
+}
+findPoint <- function(idx){
+  slopeA <- AbuttY[idx]/AbuttX[idx]
+  slopeB <- BbuttY[idx]/BbuttX[idx]
+  if(slopeA==slopeB){
+    print("PROBLEM! Same Slopes, assumptions violated, need to rethink things for this case!")
+  }
+  point1 <- (PrizeY[idx] - slopeB*PrizeX[idx])/(slopeA - slopeB)#X coord of first intersect possibility
+  if(point1 <= PrizeX[idx] & point1 >= 0){
+    cost1 <- 3*point1/AbuttX[idx] + (PrizeX[idx]-point1)/BbuttX[idx]
+    pressA <- point1/AbuttX[idx]
+    pressB <- (PrizeX[idx]-point1)/BbuttX[idx]
+  }else{#Otherwise it's impossible
+    cost1 <- 0
+    pressA <- 0
+    pressB <- 0
+  }
+  tmp <- ifelse(abs(round(pressA)-pressA) < (1/AbuttX[idx]) & abs(round(pressB)-pressB) < (1/BbuttX[idx]), round(cost1), 0)## Account for rounding errors
+  return(tmp)
+}
+myTokens <- 0
+for(idx in 1:length(AbuttX)){
+  myTokens <- myTokens + findPoint(idx)
+}
+myTokens
+##p2 should be a piece of cake.
+PrizeXa <- PrizeX
+PrizeYa <- PrizeY
+PrizeX <- PrizeXa + 10000000000000
+PrizeY <- PrizeYa + 10000000000000
+myTokensB <- 0
+for(idx in 1:length(AbuttX)){
+  myTokensB <- myTokensB + findPoint(idx)
+}
+format(myTokensB, digits=nchar(myTokensB))
+
+##D14 p1
+myin <- read.table("/Users/tfaits/Documents/Advent2024/d14.txt", header=FALSE)
+robots <- data.frame(first=c(0,0,0,0))
+endPos <- list()
+myQuads <- c(0,0,0,0)
+for(i in 1:nrow(myin)){
+  robots[,i] <- c(as.numeric(strsplit(myin[i,1],"=|,")[[1]][2:3]), as.numeric(strsplit(myin[i,2],"=|,")[[1]][2:3]))
+  endPos[[i]] <- c((robots[1,i] + 100*robots[3,i]) %% 101,(robots[2,i] + 100*robots[4,i]) %% 103)
+  if(endPos[[i]][1] < 50 & endPos[[i]][2] < 51){
+    myQuads[1] <- myQuads[1] + 1
+  }
+  if(endPos[[i]][1] > 50 & endPos[[i]][2] < 51){
+    myQuads[2] <- myQuads[2] + 1
+  }
+  if(endPos[[i]][1] < 50 & endPos[[i]][2] > 51){
+    myQuads[3] <- myQuads[3] + 1
+  }
+  if(endPos[[i]][1] > 50 & endPos[[i]][2] > 51){
+    myQuads[4] <- myQuads[4] + 1
+  }
+}
+prod(myQuads)
+##p2
+## After some individual checking of each step, I noticed clear patterns were emerging at regular intervals.
+## They showed up every n*101+71 seconds, and n*103+16 seconds. Instead of checking *everything*, I just checked those beats:
+for(j in 1:2000){
+  i <- j*101+72
+  mymat <- matrix(nrow=103, ncol=101, data=" ")
+  tmp <- data.frame(X=unlist(robots[1,] + (i-1)*robots[3,]) %% 101,Y=unlist((robots[2,] + (i-1)*robots[4,]) %% 103))
+  mymat[tmp[,2] + 103*tmp[,1] + 1] <- "#"
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+  print(paste("After", i-1, "seconds, the robots looks like this:"))
+  for(myRow in 1:nrow(mymat)){
+    print(paste(mymat[myRow,], collapse=""))
+  }
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+  readline(prompt="Press [enter] to continue")
+  i <- j*103+17
+  mymat <- matrix(nrow=103, ncol=101, data=" ")
+  tmp <- data.frame(X=unlist(robots[1,] + (i-1)*robots[3,]) %% 101,Y=unlist((robots[2,] + (i-1)*robots[4,]) %% 103))
+  mymat[tmp[,2] + 103*tmp[,1] + 1] <- "#"
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+  print(paste("After", i-1, "seconds, the robots looks like this:"))
+  for(myRow in 1:nrow(mymat)){
+    print(paste(mymat[myRow,], collapse=""))
+  }
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+  readline(prompt="Press [enter] to continue")
+}
+## Unnecessary for the problem, but I also wanted to be able to check any arbitrary point
+checkMap <- function(i){
+  mymat <- matrix(nrow=103, ncol=101, data=" ")
+  tmp <- data.frame(X=unlist(robots[1,] + (i)*robots[3,]) %% 101,Y=unlist((robots[2,] + (i)*robots[4,]) %% 103))
+  mymat[tmp[,2] + 103*tmp[,1] + 1] <- "#"
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+  print(paste("After", i, "seconds, the robots looks like this:"))
+  for(myRow in 1:nrow(mymat)){
+    print(paste(mymat[myRow,], collapse=""))
+  }
+  print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+}
+checkMap(8050)#Found by examining the outputs of the above loop
+
+##D15 p1:
+
+
+
+
+
+
+
+
+
+
