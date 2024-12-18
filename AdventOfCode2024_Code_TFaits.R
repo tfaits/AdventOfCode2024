@@ -807,7 +807,262 @@ checkMap <- function(i){
 }
 checkMap(8050)#Found by examining the outputs of the above loop
 
+
+
 ##D15 p1:
+myin <- read.table("/Users/tfaits/Documents/Advent2024/d15.txt", header=FALSE, comment.char = "", colClasses = "character")
+# myin <- data.frame(V1=c("########",
+#                         "#..O.O.#",
+#                         "##@.O..#",
+#                         "#...O..#",
+#                         "#.#.O..#",
+#                         "#...O..#",
+#                         "#......#",
+#                         "########",
+#                         "<^^>>>vv<v>>v<<"))
+nRow <- sum(grepl("#", myin[,1]))
+nCol <- nchar(myin[1,1])
+mymat <- matrix(nrow=nRow, ncol=nCol)
+for(i in 1:nRow){
+  mymat[i,] <- strsplit(myin[i,1],"")[[1]]
+}
+myMoves <- strsplit(paste(myin[(nRow+1):nrow(myin),],collapse=""),"")[[1]]
+robPos <- which(mymat=="@")
+Directions <- c(-1, 1, -nRow, nRow)
+names(Directions) <- c("^","v","<",">")
+printMap <- function(){
+  for(i in 1:nrow(mymat)){
+    print(paste(mymat[i,], collapse=""))
+  }
+}
+printMap()
+## Move the robot
+for(move in myMoves){
+  myDirection <- Directions[move]
+  curLoc <- robPos + myDirection
+  if(mymat[curLoc] == "."){#If empty space directly in front, just move:
+    mymat[robPos] <- "."
+    mymat[curLoc] <- "@"
+    robPos <- curLoc
+  }else if(mymat[curLoc] == "O"){
+    tmpLoc <- curLoc + myDirection
+    while(mymat[tmpLoc] != "#"){
+      if(mymat[tmpLoc] == "."){
+        mymat[tmpLoc] <- "O"
+        mymat[robPos] <- "."
+        mymat[curLoc] <- "@"
+        robPos <- curLoc
+        break
+      }else{
+        tmpLoc <- tmpLoc + myDirection
+      }
+    }
+  }
+  # print("~~~~~~~~~~~~~~~~~~~~~~")
+  # print(move)
+  # printMap()
+  # print("~~~~~~~~~~~~~~~~~~~~~~")
+}
+## Calculate the GPC coordinates (and sum them)
+printMap()
+myGPS <- 0
+for(i in which(mymat=="O")){
+  myGPS <- myGPS + 100*((i %% nRow)-1) + floor((i-1)/nRow)
+}
+myGPS
+##p2
+## Oh geeze. This... feels like it will require a complete rewrite. Pushing left/right is *almost* the same (except [ and ] need to stay properly paired)
+## ...but pushing up/down can lead to splitting/expanding stacks of boxes if they're shifted 1 step
+myin <- read.table("/Users/tfaits/Documents/Advent2024/d15.txt", header=FALSE, comment.char = "", colClasses = "character")
+# myin <- data.frame(V1=c("##########",
+#                         "#..O..O.O#",
+#                         "#......O.#",
+#                         "#.OO..O.O#",
+#                         "#..O@..O.#",
+#                         "#O#..O...#",
+#                         "#O..O..O.#",
+#                         "#.OO.O.OO#",
+#                         "#....O...#",
+#                         "##########",
+#                         "<vv>^<v^>v>^vv^v>v<>v^v<v<^vv<<<^><<><>>v<vvv<>^v^>^<<<><<v<<<v^vv^v>^",
+#                         "vvv<<^>^v^^><<>>><>^<<><^vv^^<>vvv<>><^^v>^>vv<>v<<<<v<^v>^<^^>>>^<v<v",
+#                         "><>vv>v^v^<>><>>>><^^>vv>v<^^^>>v^v^<^^>v^^>v^<^v>v<>>v^v^<v>v^^<^^vv<",
+#                         "<<v<^>>^^^^>>>v^<>vvv^><v<<<>^^^vv^<vvv>^>v<^^^^v<>^>vvvv><>>v^<<^^^^^",
+#                         "^><^><>>><>^^<<^^v>>><^<v>^<vv>>v>>>^v><>^v><<<<v>>v<v<v>vvv>^<><<>^><",
+#                         "^>><>^v<><^vvv<^^<><v<<<<<><^v<<<><<<^^<v<^^^><^>>^<v^><<<^>>^v<v^v<v^",
+#                         ">^>>^v>vv>^<<^v<>><<><<v<<v><>v<^vv<<<>^^v^>^^>>><<^v>>v^v><^^>>^<>vv^",
+#                         "<><^^>^^^<><vvvvv^v<v<<>^v<v>v<<^><<><<><<<^^<<<^<<>><<><^^^>^^<>^>v<>",
+#                         "^^>vv<^v^v<vv>^<><v<^v>^^^>>>^^vvv^>vvv<>>>^<^>>>>>^<<^v>^vvv<>^<><<v>",
+#                         "v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^"))
+nRow <- sum(grepl("#", myin[,1]))
+nCol <- nchar(myin[1,1])*2
+mymat <- matrix(nrow=nRow, ncol=nCol)
+for(i in 1:nRow){
+  mymat[i,] <- strsplit(paste0(strsplit(myin[i,1],"")[[1]],strsplit(myin[i,1],"")[[1]], collapse=""),"")[[1]]
+}
+myMoves <- strsplit(paste(myin[(nRow+1):nrow(myin),],collapse=""),"")[[1]]
+mymat[which(mymat=="@")[2]] <- "."
+robPos <- which(mymat=="@")
+Directions <- c(-1, 1, -nRow, nRow)
+names(Directions) <- c("^","v","<",">")
+for(i in 1:nrow(mymat)){
+  for(j in 1:ncol(mymat)){
+    if(mymat[i,j] == "O"){
+      mymat[i,j] <- "["
+      mymat[i,j+1] <- "]"
+    }
+  }
+}
+checkMove <- function(curLoc){
+  tmp <- c()
+  if(mymat[curLoc + myDirection]=="["){
+    tmp <- unique(c(curLoc, curLoc+myDirection, curLoc+myDirection+nRow, checkMove(curLoc+myDirection), checkMove(curLoc+myDirection + nRow)))
+  }
+  if(mymat[curLoc + myDirection]=="]"){
+    tmp <- unique(c(curLoc, curLoc+myDirection, curLoc+myDirection-nRow, checkMove(curLoc+myDirection), checkMove(curLoc+myDirection - nRow)))
+  }
+  return(tmp)
+}
+for(move in myMoves){
+  myDirection <- Directions[move]
+  curLoc <- robPos + myDirection
+  if(mymat[curLoc] == "."){#If empty space directly in front, just move:
+    mymat[robPos] <- "."
+    mymat[curLoc] <- "@"
+    robPos <- curLoc
+  }else if(mymat[curLoc] != "#"){
+    if(abs(myDirection) == 1){# Asking if robot is moving vertically
+      toMove <- checkMove(robPos)
+      tempPattern <- mymat[toMove]
+      if(sum(mymat[toMove+myDirection]=="#")==0){#If any spot direction above a box (or the robot) is a wall, the move cannot happen.
+        mymat[toMove] <- "."
+        mymat[toMove+myDirection] <- tempPattern
+        robPos <- curLoc
+      }
+    }else{#If robot is moving horizontally, treat things differently
+      tmpLoc <- curLoc + myDirection
+      while(mymat[tmpLoc] != "#"){
+        if(mymat[tmpLoc] == "."){
+          mymat[seq(curLoc, tmpLoc, myDirection)] <- mymat[seq(robPos, tmpLoc-myDirection, myDirection)]
+          mymat[robPos] <- "."
+          robPos <- curLoc
+          break
+        }else{
+          tmpLoc <- tmpLoc + myDirection
+        }
+      }
+    }
+  }
+  # print("~~~~~~~~~~~~~~~~~~~~~~")
+  # print(move)
+  # printMap()
+  # print("~~~~~~~~~~~~~~~~~~~~~~")
+}
+printMap()
+myGPS <- 0
+for(i in which(mymat=="[")){
+  myGPS <- myGPS + 100*((i %% nRow)-1) + floor((i-1)/nRow)
+}
+myGPS
+
+##D16 p1
+myin <- read.table("/Users/tfaits/Documents/Advent2024/d16.txt", header=FALSE, comment.char = "", colClasses = "character")
+# myin <- data.frame(V1=c("###############",
+#                         "#.......#....E#",
+#                         "#.#.###.#.###.#",
+#                         "#.....#.#...#.#",
+#                         "#.###.#####.#.#",
+#                         "#.#.#.......#.#",
+#                         "#.#.#####.###.#",
+#                         "#...........#.#",
+#                         "###.#.#####.#.#",
+#                         "#...#.....#.#.#",
+#                         "#.#.#.###.#.#.#",
+#                         "#.....#...#.#.#",
+#                         "#.###.#.#.#.#.#",
+#                         "#S..#.....#...#",
+#                         "###############"))
+nRow <- sum(grepl("#", myin[,1]))
+nCol <- nchar(myin[1,1])
+mymat <- matrix(nrow=nRow, ncol=nCol)
+for(i in 1:nRow){
+  mymat[i,] <- strsplit(myin[i,1],"")[[1]]
+}
+Directions <- c(-1, nRow, 1, -nRow)#North, East, South, West
+myScores <- list()
+for(i in 1:length(unlist(mymat))){## For each location, keep track of 4 scores - score facing each direction.
+  myScores[[i]] <- c(9999999,9999999, 9999999, 9999999)#N/E/S/W
+  if(mymat[i] == "#"){
+    myScores[[i]] <- NA
+  }
+} 
+myScores[[which(mymat=="S")]] <- c(0,0,0,0)
+spotList <- c(which(mymat=="S"))
+dirList <- c(2)
+checkMove <- function(curLoc, curDir){
+  for(i in 1:4){
+    if(length(myScores[[curLoc+Directions[i]]]) > 1){
+      if(i==curDir){
+        tmp <- myScores[[curLoc]][i] + 1
+        if(tmp < myScores[[curLoc+Directions[i]]][i]){
+          myScores[[curLoc + Directions[i]]][i] <<- tmp
+          spotList <<- c(spotList, curLoc+Directions[i])
+          dirList <<- c(dirList, i)
+        }
+      }else{
+        tmp <- myScores[[curLoc]][curDir] + 1001
+        if(tmp < myScores[[curLoc+Directions[i]]][i]){
+          myScores[[curLoc + Directions[i]]][i] <<- tmp
+          spotList <<- c(spotList, curLoc+Directions[i])
+          dirList <<- c(dirList, i)
+        }
+      }
+    }
+  }
+}
+maxStack <- 1
+while(length(spotList) > 0){
+  checkMove(spotList[1], dirList[1])
+  spotList <- spotList[-1]
+  dirList <- dirList[-1]
+  maxStack <- max(maxStack, length(spotList))
+}
+maxStack
+myScores[[which(mymat=="E")]]
+##p2 - Work backwards from the exit, track each square with score that's 1|1001 less
+spotList <- c(which(mymat=="E"))
+dirList <- c(which.min(myScores[[which(mymat=="E")]]))
+goodSpots <- c(spotList)
+Movecheck <- function(curLoc, curDir){
+  for(i in 1:4){
+    if(length(myScores[[curLoc-Directions[curDir]]]) > 1){
+      if(i==curDir){
+        tmp <- myScores[[curLoc]][i] - 1
+        if(tmp == myScores[[curLoc-Directions[curDir]]][i]){
+          spotList <<- c(spotList, curLoc-Directions[curDir])
+          dirList <<- c(dirList, i)
+          goodSpots <<- c(goodSpots, curLoc-Directions[curDir])
+        }
+      }else{
+        tmp <- myScores[[curLoc]][curDir] - 1001
+        if(tmp == myScores[[curLoc-Directions[curDir]]][i]){
+          spotList <<- c(spotList, curLoc-Directions[curDir])
+          dirList <<- c(dirList, i)
+          goodSpots <<- c(goodSpots, curLoc-Directions[curDir])
+        }
+      }
+    }
+  }
+}
+while(length(spotList) > 0){
+  Movecheck(spotList[1], dirList[1])
+  spotList <- spotList[-1]
+  dirList <- dirList[-1]
+}
+length(unique(goodSpots))
+
+##D17 p1
+
 
 
 
